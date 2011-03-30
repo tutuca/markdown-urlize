@@ -36,6 +36,7 @@ u'<p>del.icio.us</p>'
 """
 
 import markdown
+from mimetypes import guess_type
 
 # Global Vars
 URLIZE_RE = '(%s)' % '|'.join([
@@ -60,10 +61,14 @@ class UrlizePattern(markdown.inlinepatterns.Pattern):
                 url = 'mailto:' + url
             else:
                 url = 'http://' + url
-    
-        el = markdown.etree.Element("a")
-        el.set('href', url)
-        el.text = markdown.AtomicString(text)
+                
+        if guess_type(url)[0] and 'image' in guess_type(url)[0]:
+            el = markdown.etree.Element("img")
+            el.set('src', url)
+        else:
+            el = markdown.etree.Element("a")
+            el.set('href', url)
+            el.text = markdown.AtomicString(text)
         return el
 
 class UrlizeExtension(markdown.Extension):
@@ -71,7 +76,7 @@ class UrlizeExtension(markdown.Extension):
 
     def extendMarkdown(self, md, md_globals):
         """ Replace autolink with UrlizePattern """
-        md.inlinePatterns['autolink'] = UrlizePattern(URLIZE_RE, md)
+        md.inlinePatterns['urlize'] = UrlizePattern(URLIZE_RE, md)
 
 def makeExtension(configs=None):
     return UrlizeExtension(configs=configs)
