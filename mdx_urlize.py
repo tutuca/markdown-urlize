@@ -28,6 +28,9 @@ u'<p>(<a href="http://www.example.us/path/?name=val">www.example.us/path/?name=v
 >>> md.convert('go to <http://example.com> now!')
 u'<p>go to <a href="http://example.com">http://example.com</a> now!</p>'
 
+>>> md.convert('http://example.com/abc.png')
+u'<img src="http://example.com/abc.png" />'
+
 Negative examples:
 
 >>> md.convert('del.icio.us')
@@ -36,7 +39,7 @@ u'<p>del.icio.us</p>'
 """
 
 import markdown
-from mimetypes import guess_type
+from mimetypes import guess_type, guess_extension
 
 # Global Vars
 URLIZE_RE = '(%s)' % '|'.join([
@@ -45,6 +48,25 @@ URLIZE_RE = '(%s)' % '|'.join([
     r'\bwww\.[^)<>\s]+[^.,)<>\s]',
     r'[^(<\s]+\.(?:com|net|org)\b',
 ])
+
+def process_image(image_url):
+    import urllib
+    import os
+    from StringIO import StringIO
+    from hashlib import sha1
+    from PIL import Image
+    from django.conf import settings
+
+
+    file_type = guess_type(image_url)
+    ext = file_type[0].split('/')[1]
+    image_name = '.'.join((sha1(image_url).hexdigest()[:6], ext))
+    image_path = os.path.join(settings.UPLOAD_DIR, image_name)
+
+    if not os.path.isfile(image_path):
+        urllib.urlretrieve(image_url, image_path)
+            
+    return '/'.join((settings.UPLOAD_URL, image_name))
 
 class UrlizePattern(markdown.inlinepatterns.Pattern):
     """ Return a link Element given an autolink (`http://example/com`). """
@@ -61,10 +83,10 @@ class UrlizePattern(markdown.inlinepatterns.Pattern):
                 url = 'mailto:' + url
             else:
                 url = 'http://' + url
-                
-        if guess_type(url)[0] and 'image' in guess_type(url)[0]:
+        mime_type = guess_type(url)
+        if mime_type[0] and 'image' in mime_type[0]:
             el = markdown.etree.Element("img")
-            el.set('src', url)
+            el.set('src', process_image(url))
         else:
             el = markdown.etree.Element("a")
             el.set('href', url)
