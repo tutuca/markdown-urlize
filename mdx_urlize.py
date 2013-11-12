@@ -39,7 +39,8 @@ u'<p>del.icio.us</p>'
 """
 
 import markdown
-from mimetypes import guess_type, guess_extension
+from mimetypes import guess_type
+from markdown.util import etree
 
 # Global Vars
 URLIZE_RE = '(%s)' % '|'.join([
@@ -52,9 +53,7 @@ URLIZE_RE = '(%s)' % '|'.join([
 def process_image(image_url):
     import urllib
     import os
-    from StringIO import StringIO
     from hashlib import sha1
-    from PIL import Image
     from django.conf import settings
 
 
@@ -85,10 +84,10 @@ class UrlizePattern(markdown.inlinepatterns.Pattern):
                 url = 'http://' + url
         mime_type = guess_type(url)
         if mime_type[0] and 'image' in mime_type[0]:
-            el = markdown.etree.Element("img")
+            el = etree.Element("img")
             el.set('src', process_image(url))
         else:
-            el = markdown.etree.Element("a")
+            el = etree.Element("a")
             el.set('href', url)
             el.text = markdown.AtomicString(text)
         return el
